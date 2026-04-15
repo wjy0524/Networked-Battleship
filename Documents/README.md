@@ -470,28 +470,28 @@ Submit to Canvas by the due date (in addition to GradeScope):
 
 ## Checklist
 
-- [ ] Re-read the requirements after finishing to confirm all are met.
-- [ ] Server accepts exactly two clients; a third is rejected with `ERROR` and closed.
-- [ ] `ASSIGN` is sent to each client immediately on connect.
-- [ ] `GAME_START` is sent only after **both** clients send `READY`.
-- [ ] `FIRE` from the wrong player returns `ERROR` and does not change turn.
-- [ ] `SHOT_RESULT` is broadcast to **both** clients.
-- [ ] `GAME_OVER` is sent on win detection with the correct `winner` field.
-- [ ] `CHAT` is broadcast to both clients and is not delayed by game logic.
-- [ ] Disconnecting one client sends `OPPONENT_DISCONNECTED` to the other.
-- [ ] All threads terminate cleanly after the game ends.
-- [ ] No `synchronized` block is held while calling `writeFrame`.
-- [ ] React frontend: both boards display correctly from `GAME_START`.
-- [ ] React frontend: clicking only works on Opponent's Board, only on your turn, only on untargeted cells.
-- [ ] React frontend: fleet panels update when a ship is sunk.
-- [ ] React frontend: chat sends and receives at all times.
-- [ ] React frontend: `GAME_OVER` shows winner and final boards.
-- [ ] `PROTOCOL.md` documents every message type completely.
-- [ ] UML diagram uploaded to Canvas.
-- [ ] JavaDoc ZIP uploaded to Canvas.
-- [ ] Project writeup submitted.
-- [ ] All `.java` files have the standard course header comment.
-- [ ] GradeScope submission includes all `.java` and frontend source files.
+- [X] Re-read the requirements after finishing to confirm all are met.
+- [X] Server accepts exactly two clients; a third is rejected with `ERROR` and closed.
+- [X] `ASSIGN` is sent to each client immediately on connect.
+- [X] `GAME_START` is sent only after **both** clients send `READY`.
+- [X] `FIRE` from the wrong player returns `ERROR` and does not change turn.
+- [X] `SHOT_RESULT` is broadcast to **both** clients.
+- [X] `GAME_OVER` is sent on win detection with the correct `winner` field.
+- [X] `CHAT` is broadcast to both clients and is not delayed by game logic.
+- [X] Disconnecting one client sends `OPPONENT_DISCONNECTED` to the other.
+- [X] All threads terminate cleanly after the game ends.
+- [X] No `synchronized` block is held while calling `writeFrame`.
+- [X] React frontend: both boards display correctly from `GAME_START`.
+- [X] React frontend: clicking only works on Opponent's Board, only on your turn, only on untargeted cells.
+- [X] React frontend: fleet panels update when a ship is sunk.
+- [X] React frontend: chat sends and receives at all times.
+- [X] React frontend: `GAME_OVER` shows winner and final boards.
+- [X] `PROTOCOL.md` documents every message type completely.
+- [X] UML diagram uploaded to Canvas.
+- [X] JavaDoc ZIP uploaded to Canvas.
+- [X] Project writeup submitted.
+- [X] All `.java` files have the standard course header comment.
+- [X] GradeScope submission includes all `.java` and frontend source files.
 
 ---
 

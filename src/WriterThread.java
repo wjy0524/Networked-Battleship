@@ -14,6 +14,11 @@
  *
  * Shutdown is signalled by placing POISON_PILL in the queue.
  */
+/**
+ * Dedicated writer thread for a single client connection.
+ * Drains a LinkedBlockingQueue<String> and writes each entry to the client's
+ * OutputStream as a WebSocket frame.
+ */
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -42,6 +47,10 @@ public class WriterThread extends Thread {
         setDaemon(true);
     }
 
+    /**
+     * take messages from outbox and write them to the client as WebSocket frames until we get the POISON_PILL,
+     * then close the socket and exit.
+     */
     @Override
     public void run() {
         // TODO: loop, taking messages from outbox with outbox.take()

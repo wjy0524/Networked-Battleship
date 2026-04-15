@@ -16,11 +16,24 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
 
+/**
+ * Handles one client connection.
+ * Runs on its own Thread.
+ * Performs the WebSocket handshake, reads incoming frames, and forwards messages to the GameServer.
+ */
 public class ClientHandler extends Thread {
 
     private final Socket     socket;
     private final int        playerNum;   // 1 or 2
     private final GameServer server;
+
+    /**
+     * Constructs a ClientHandler for the given Socket and player number, with the shared GameServer.
+     *
+     * @param socket the client's socket
+     * @param playerNum the player number (1 or 2)
+     * @param server the shared GameServer
+     */
 
     public ClientHandler(Socket socket, int playerNum, GameServer server) {
         this.socket    = socket;
@@ -29,6 +42,10 @@ public class ClientHandler extends Thread {
         setDaemon(true);
     }
 
+    /**
+     * Performs the WebSocket handshake, sends ASSIGN,
+     * then loops reading frames and forwarding them to GameServer until the client disconnects.
+     */
     @Override
     public void run() {
         try {
@@ -79,6 +96,7 @@ public class ClientHandler extends Thread {
             System.err.println("Player " + playerNum + " I/O error: " + e.getMessage());
         } finally {
             // TODO: log that player playerNum has disconnected
+            // logs player playerNum has disconnected from the server
             System.out.println("Player " + playerNum + " has disconnected from the server.");
             // TODO: call server.handleDisconnect(playerNum)
             //basically notify the server that this player has gone

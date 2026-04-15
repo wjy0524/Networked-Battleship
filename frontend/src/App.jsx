@@ -45,6 +45,9 @@ export default function App() {
 
   const wsRef           = useRef(null);
   const playerNumberRef = useRef(null);  // always-current copy — read this in onmessage
+  //I learned that with the help of google search and chatgpt, React state is asynchronous, so that to check the status, I need to use statusRef.current
+  // to prevent the possible errors.
+  const statusRef = useRef("idle");
 
   // Keep the ref in sync with the state value.
   useEffect(() => { playerNumberRef.current = playerNumber; }, [playerNumber]);
@@ -88,120 +91,146 @@ export default function App() {
   // ws.onerror:  set error, reset status to "idle"
   // -------------------------------------------------------------------------
   const connect = () => {
-    const ws = new WebSocket(SERVER_URL);
-    wsRef.current = ws;
-    setStatus("connecting");
+      if(wsRef.current) return;  //if it already has a connection, do nothing
+      // Create new WebSocket(SERVER_URL), store in wsRef.current
+      const ws = new WebSocket(SERVER_URL);
+      //store in wsRef.current
+      wsRef.current = ws;
+      // set status to "connecting"
+      setStatus("connecting");
 
-    ws.onmessage = (event) => {
-      const msg = JSON.parse(event.data);
+      //ws.onmessage:
+      //   Parse event.data as JSON.  Dispatch on msg.type:
+      ws.onmessage = (event) => {
+          //parse event data as JSON
+          const msg = JSON.parse(event.data);
+          //"ASSIGN"    → update playerNumberRef.current AND setPlayerNumber immediately
+          //                 (updating the ref first ensures comparisons below are correct even before React re-renders)
+          //                 setStatus("waiting")
+          //                 send READY with the player's name
+          if(msg.type === "ASSIGN"){
+              //store player number in ref and state
+              playerNumberRef.current = msg.playerNumber;
 
-      switch (msg.type) {
+              // update player number in state nad set status as waiting
+              setPlayerNumber(msg.playerNumber);
+              setStatus("waiting");
 
-        case "ASSIGN":
-          playerNumberRef.current = msg.playerNumber;
-          setPlayerNumber(msg.playerNumber);
-          setStatus("waiting");
+              //send READY with the player's name
+              ws.send(JSON.stringify({type: "READY", name: nameInput}));
 
-          ws.send(JSON.stringify({
-            type: "READY",
-            name: nameInput
-          }));
-          break;
+          }else if(msg.type === "WAITING"){
+              // "WAITING"   → setStatus("waiting")
+              setStatus("waiting");
 
-        case "WAITING":
-          setStatus("waiting");
-          break;
+          }else if(msg.type === "GAME_START"){
+              // "GAME_START"→ populate myBoard from msg.myBoard (2D array of 0s and 1s)}
+              setMyBoard(msg.myBoard);
 
-        case "GAME_START":
-          setMyBoard(msg.myBoard);
-          setOpponentBoard(emptyBoard());
-          setMyFleet(initialFleet());
-          setOpponentFleet(initialFleet());
-          setWinner(null);
-          setMyTurn(msg.turn === playerNumberRef.current);
-          setStatus("playing");
-          break;
+              // reset opponentBoard, fleets, winner
+              setOpponentBoard(emptyBoard());
+              setMyFleet(initialFleet());
+              setOpponentFleet(initialFleet());
+              setWinner(null);
 
-        case "SHOT_RESULT": {
-          const { shooter, row, col, hit, sunkShip } = msg;
+              // setMyTurn(msg.turn === playerNumberRef.current)  ← use the ref
+              setMyTurn(msg.turn === playerNumberRef.current);
 
-          if (shooter === playerNumberRef.current) {
-            // 내가 쏜 경우 → opponentBoard 업데이트
-            setOpponentBoard(prev => {
-              const copy = prev.map(r => [...r]);
-              copy[row][col] = hit ? 2 : 3;
-              return copy;
-            });
+              // setStatus("playing")
+              setStatus("playing");
 
-            if (sunkShip) {
-              setOpponentFleet(prev =>
-                prev.map(s =>
-                  s.name === sunkShip ? { ...s, sunk: true } : s
-                )
-              );
-            }
+          }else if(msg.type === "SHOT_RESULT"){
+              //update the correct board cell and fleet
+              //use playerNumberRef.current to decide if you are the shooter
+              const shooter = msg.shooter;
+              const row = msg.row;
+              const col = msg.col;
+              const hit = msg.hit;
+              const sunkShip = msg.sunkShip;
 
-          } else {
-            // 상대가 쏜 경우 → myBoard 업데이트
-            setMyBoard(prev => {
-              const copy = prev.map(r => [...r]);
-              copy[row][col] = hit ? 2 : 3;
-              return copy;
-            });
+              //update the correct board cell
+              //if i shot, update opponent board, else update my board
+              if(shooter === playerNumberRef.current){
+                  //i shot, update opponent board
+                  setOpponentBoard(prev => {
+                      const nxtBoard = prev.map(r => [...r]);
+                      nxtBoard[row][col] = hit ? 2 : 3; // 2 for hit, 3 for miss
+                      return nxtBoard;
+                  });
+                  //update opponent fleet if sunk
+                  if(sunkShip){
+                      setOpponentFleet(prev => prev.map(ship => ship.name === sunkShip ? { ...ship, sunk: true } : ship));
+                  }
+              }else{
+                  //else, opponent shot, update my board
+                  setMyBoard(prev => {
+                      const nxtBoard = prev.map(r => [...r]);
+                      nxtBoard[row][col] = hit ? 2 : 3;
+                      return nxtBoard;
+                  });
+                  //update my fleet if sunk
+                  if(sunkShip){
+                      setMyFleet(prev => prev.map(ship => ship.name === sunkShip ? { ...ship, sunk: true } : ship));
+                  }
+              }
+          }else if(msg.type === "TURN_CHANGE"){
+              // "TURN_CHANGE"→ setMyTurn(msg.turn === playerNumberRef.current)
+              setMyTurn(msg.turn === playerNumberRef.current);
 
-            if (sunkShip) {
-              setMyFleet(prev =>
-                prev.map(s =>
-                  s.name === sunkShip ? { ...s, sunk: true } : s
-                )
-              );
-            }
+          }else if(msg.type === "CHAT"){
+              // "CHAT"      → append { from, text, time } to chatLog
+              //since from protocol template, CHAT doens't have time
+              //so we will use new Date().toLocaleTimeString() as the time when receiving the message I got help from chatGPT to add time to the message
+              setChatLog(prev => [...prev, { from: msg.from, text: msg.text, time: new Date().toLocaleTimeString() }]);
+
+          }else if(msg.type === "GAME_OVER"){
+              // "GAME_OVER" → setWinner, setStatus("over"), update final board
+              statusRef.current = "over";
+              setWinner(msg.winner);
+              setStatus("over");
+
+              //update final board which is defending player's board(loser board)
+              if(msg.winner === playerNumberRef.current){
+                  //winner is the shooter, so update opponent board, which is the final board
+                  setOpponentBoard(msg.finalBoard);
+              }else{
+                //winner is opponent, so update my board, which is the final board}
+                setMyBoard(msg.finalBoard);
+              }
+
+          }else if(msg.type === "OPPONENT_DISCONNECTED"){
+              // "OPPONENT_DISCONNECTED" → setErrorMsg, setStatus("over")
+              statusRef.current = "over";
+              setErrorMsg("Opponent disconnected. You win! The opponent run away like a coward.");
+              setStatus("over");
+
+          }else if(msg.type === "ERROR"){
+              // "ERROR"     → console.warn
+              console.warn("Error from server:", msg.message);
+              //when the third person tries to connect
+              if(msg.message === "Server is full."){
+                  statusRef.current = "idle";  // 추가
+                  setErrorMsg(msg.message);
+                  setStatus("idle");
+              }
+
           }
-          break;
-        }
+      };
 
-        case "TURN_CHANGE":
-          setMyTurn(msg.turn === playerNumberRef.current);
-          break;
-
-        case "CHAT":
-          setChatLog(prev => [
-            ...prev,
-            {
-              from: msg.from,
-              text: msg.text,
-              time: new Date().toLocaleTimeString()
-            }
-          ]);
-          break;
-
-        case "GAME_OVER":
-          setWinner(msg.winner);
-          setStatus("over");
-          break;
-
-        case "OPPONENT_DISCONNECTED":
-          setErrorMsg("Opponent disconnected.");
-          setStatus("over");
-          break;
-
-        case "ERROR":
-          console.warn(msg.message);
-          break;
-      }
-    };
-
+    // ws.onclose: clear wsRef, set an error if not already "over"
     ws.onclose = () => {
-      wsRef.current = null;
-      if (status !== "over") {
-        setErrorMsg("Connection closed.");
-        setStatus("idle");
-      }
+        wsRef.current = null;
+        if(statusRef.current !== "over" && statusRef.current !== "idle"){
+            setErrorMsg("Connection closed unexpectedly.");
+            setStatus("over");
+        }
     };
 
+  // ws.onerror:  set error, reset status to "idle"
     ws.onerror = () => {
-      setErrorMsg("Connection error.");
-      setStatus("idle");
+        wsRef.current = null;
+        setErrorMsg("Connection error. Please try again.");
+        setStatus("idle");
     };
   };
 
@@ -219,12 +248,8 @@ export default function App() {
   // -------------------------------------------------------------------------
   const fire = (row, col) => {
     const ws = wsRef.current;
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
-        type: "FIRE",
-        row,
-        col
-      }));
+    if(ws && ws.readyState === WebSocket.OPEN){
+      ws.send(JSON.stringify({ type: "FIRE", row, col }));
     }
   };
 
@@ -233,17 +258,17 @@ export default function App() {
   // -------------------------------------------------------------------------
   const sendChat = (text) => {
     const ws = wsRef.current;
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
-        type: "CHAT",
-        text
-      }));
+    // Check if WebSocket is open before sending i guess it is safer
+    //it is unsafe to call ws.send when the connection is not open, which could lead to errors or lost messages.
+    if(ws&& ws.readyState === WebSocket.OPEN){
+        ws.send(JSON.stringify({ type: "CHAT", text }));
     }
   };
 
   // -------------------------------------------------------------------------
   // Render — skeleton provided; fill in the playing screen.
   // -------------------------------------------------------------------------
+  //this CSS layout boilerplate part was helped with CHATGPT
 
   if (status === "idle" || status === "connecting") {
     return (
@@ -277,50 +302,60 @@ export default function App() {
   }
 
   if (status === "over") {
+    // TODO: render game-over screen (winner/loser, both boards, reload button)
     return (
-      <div className="game-over">
-        <h1>{winner === playerNumber ? "You Win! 🎉" : "You Lose 💀"}</h1>
-        <p>Player {winner} won the game.</p>
-        <div className="boards-row">
-          <div>
-            <h3>My Board</h3>
-            <Board cells={myBoard} interactive={false} onFire={() => {}} />
+        <div className="game-over">
+          <h1>{winner === playerNumber ? "Congratulation! You win!" : "Game Over"}</h1>
+          {winner && <p>Player {winner} won the game.</p>}
+          {errorMsg && <p className="error">{errorMsg}</p>}
+
+          <div style={{ display: "flex", gap: "40px", marginTop: "20px" }}>
+            <div>
+              <h3>My Board</h3>
+              <Board cells={myBoard} interactive={false} onFire={() => {}} />
+            </div>
+
+            <div>
+              <h3>Opponent's Board</h3>
+              <Board cells={opponentBoard} interactive={false} onFire={() => {}} />
+            </div>
           </div>
-          <div>
-            <h3>Opponent's Board</h3>
-            <Board cells={opponentBoard} interactive={false} onFire={() => {}} />
-          </div>
+
+          <button onClick={() => window.location.reload()} style={{ marginTop: "20px" }}>
+            Play Again
+          </button>
         </div>
-        <button onClick={() => window.location.reload()}>Play Again</button>
-      </div>
     );
   }
 
   // status === "playing"
+  // TODO: render the main game screen:
+  //   - header with turn indicator (use myTurn state)
+  //   - My Board (interactive={false}) + FleetStatus
+  //   - Opponent's Board (interactive={myTurn}, onFire={fire}) + FleetStatus
+  //   - Chat panel
   return (
-    <div className="game">
-      <header>
-        <h1>⚓ Battleship</h1>
-        <div className={`turn-indicator ${myTurn ? "my-turn" : "their-turn"}`}>
-          {myTurn ? "Your Turn" : "Opponent's Turn"}
-        </div>
-      </header>
+    <div className="game" style={{ padding: "20px" }}>
+      <h2>{myTurn ? "Your Turn" : "Opponent's Turn"}</h2>
 
-      <div className="main-layout">
-        <div className="boards-section">
-          <div className="board-wrapper">
-            <h3>My Fleet</h3>
-            <Board cells={myBoard} interactive={false} onFire={() => {}} />
+      <div style={{ display: "flex", gap: "40px", alignItems: "flex-start" }}>
+        <div>
+          <h3>My Fleet</h3>
+          <Board cells={myBoard} interactive={false} onFire={() => {}} />
+          <div style={{ marginTop: "10px" }}>
             <FleetStatus fleet={myFleet} label="My Ships" />
           </div>
-          <div className="board-wrapper">
-            <h3>Opponent's Fleet</h3>
-            <Board cells={opponentBoard} interactive={myTurn} onFire={fire} />
+        </div>
+
+        <div>
+          <h3>Opponent's Fleet</h3>
+          <Board cells={opponentBoard} interactive={myTurn} onFire={fire} />
+          <div style={{ marginTop: "10px" }}>
             <FleetStatus fleet={opponentFleet} label="Opponent's Ships" />
           </div>
         </div>
 
-        <div className="chat-section">
+        <div>
           <Chat log={chatLog} onSend={sendChat} />
         </div>
       </div>

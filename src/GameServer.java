@@ -25,6 +25,10 @@
  *   WebSocket frame before the HTTP 101 response is sent corrupts the upgrade
  *   and causes the browser to close the connection.
  */
+/**
+ * GameServer holds all game states and processes messages from both ClientHandler threads.
+ * Since handleMessage() is synchronized to protect shared state, it is thread safe.
+ */
 
 import java.net.Socket;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -45,6 +49,13 @@ public class GameServer {
     private int turn       = 1;
     private int readyCount = 0;
 
+    /**
+     * constructs a GameServer that will be shared with given sockets and writer threads for both players.
+     * @param s1 the Socket for player 1
+     * @param s2 the Socket for player 2
+     * @param w1 the WriterThread for player 1
+     * @param w2 the WriterThread for player 2
+     */
     public GameServer(Socket s1, Socket s2, WriterThread w1, WriterThread w2) {
         sockets    = new Socket[]{s1, s2};
         writers[0] = w1;
@@ -266,7 +277,9 @@ public class GameServer {
             return;
         }
         // TODO: advance turn and broadcast TURN_CHANGE
+        //advance turn
         turn = defenderNum;
+        // broadcast TURN_CHANGE
         broadcast(Message.turnChangeJson(turn));
 
     }
@@ -278,6 +291,7 @@ public class GameServer {
     /** Enqueues json in both clients' outboxes. */
     private void broadcast(String json) {
         // TODO
+        //enqueue json in both clients' outboxes
         writers[0].send(json);
         writers[1].send(json);
     }
@@ -287,19 +301,8 @@ public class GameServer {
         // TODO
         writers[0].shutdown();
         writers[1].shutdown();
-
-        //to flush and exit, I learned that I also have to close the socket in order to unblock the thread that is waiting on the socket,
-        // so I also close the socket here with the help of GPT I learned that I should close sockets
-        try{
-            sockets[0].close();
-        }catch (Exception e){
-
-        }
-        try{
-            sockets[1].close();
-        }catch (Exception e){
-
-        }
-
+        //since in the writer threads, we close the socket when the thread ends,
+        //so we don't have to worry about closing the socket here,
+        //since the other thread waiting on the socket will detect that the client has disconnected and try connecting
     }
 }

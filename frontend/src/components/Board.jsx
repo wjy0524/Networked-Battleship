@@ -17,46 +17,37 @@ export default function Board({ cells, interactive, onFire }) {
   //   code 1 → ship cell (green)
   //   code 2 → hit (red, show "💥" or similar)
   //   code 3 → miss (grey, show "·" or similar)
-  // decide how each cell should look based on its code
-    const getCellStyle = (code) => {
-      let backgroundColor = "#102027";
-      let color = "white";
+  //determine the appropriate background color / content:
+  //this CSS layout boilerplate part was helped with CHATGPT
+  const cellStyles = (code) => {
+      let backgroundColor = "#102027"; //(dark water) got all colors' RGB with the help of gpt
       let cursor = "default";
 
-      if (code === 0) {
-        backgroundColor = interactive ? "#1976d2" : "#102027";
-        cursor = interactive ? "pointer" : "default";
-      } else if (code === 1) {
-        backgroundColor = "#2e7d32";
-      } else if (code === 2) {
-        backgroundColor = "#c62828";
-      } else if (code === 3) {
-        backgroundColor = "#757575";
-      }
-
+      if(code === 0){
+          backgroundColor = interactive ? "#1976d2" : "#102027";
+          cursor = interactive ? "pointer" : "default";
+        }else if(code === 1){
+            backgroundColor = "#388e3c"; // (green)
+        }else if(code === 2){
+            backgroundColor = "#d32f2f"; // (red)
+        }else if(code === 3){
+            backgroundColor = "#9e9e9e"; // (grey)
+        }
       return {
-        width: "36px",
-        height: "36px",
-        border: "1px solid #263238",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor,
-        color,
-        cursor,
-        fontSize: "16px",
-        userSelect: "none",
-        boxSizing: "border-box"
+          width: "36px", height: "36px",
+          border: "1px solid #263238",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          backgroundColor, cursor,
+          boxSizing: "border-box",
+          fontSize: "16px", userSelect: "none"
       };
-    };
-
-    // decide what text/icon should appear in the cell
-    const getCellContent = (code) => {
-      if (code === 2) return "💥";
-      if (code === 3) return "·";
+  };
+//determine the appropriate symbol
+  const getCellSymbol = (code) => {
+      if(code === 2) return "💥";
+      if(code === 3) return "·";
       return "";
-    };
-
+  };
 
   // TODO: render column headers (1–10) across the top
   // TODO: for each row, render a row label (A–J) then 10 cells
@@ -64,61 +55,62 @@ export default function Board({ cells, interactive, onFire }) {
   //       only when interactive is true and cells[r][c] === 0
 
   return (
-    <div style={{ display: "inline-block" }}>
-      {/* column headers */}
-            <div style={{ display: "flex", marginLeft: "36px" }}>
-              {COLS.map((col) => (
-                <div
-                  key={col}
-                  style={{
-                    width: "36px",
-                    height: "24px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "#263238",
-                    fontWeight: "bold"
-                  }}
-                >
-                  {col}
-                </div>
-              ))}
+      <div style={{ display: "inline-block" }}>
+        {/* render column headers (1–10) across the top */}
+        <div style={{ display: "flex", marginLeft: "36px" }}>
+          {COLS.map((col) => (
+            <div
+              key={col}
+              style={{
+                width: "36px",
+                height: "24px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: "bold",
+                color: "#263238"
+              }}
+            >
+              {col}
+            </div>
+          ))}
+        </div>
+
+        {/* for each row, render a row label (A–J) then 10 cells */}
+        {cells.map((row, r) => (
+          <div key={ROWS[r]} style={{ display: "flex" }}>
+            {/* row label */}
+            <div
+              style={{
+                width: "36px",
+                height: "36px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: "bold",
+                color: "#263238"
+              }}
+            >
+              {ROWS[r]}
             </div>
 
-            {/* board rows */}
-            {cells.map((row, r) => (
-              <div key={r} style={{ display: "flex" }}>
-                {/* row label */}
-                <div
-                  style={{
-                    width: "36px",
-                    height: "36px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "#263238",
-                    fontWeight: "bold"
-                  }}
-                >
-                  {ROWS[r]}
-                </div>
-
-                {/* cells */}
-                {row.map((code, c) => (
-                  <div
-                    key={`${r}-${c}`}
-                    style={getCellStyle(code)}
-                    onClick={() => {
-                      if (interactive && cells[r][c] === 0) {
-                        onFire(r, c);
-                      }
-                    }}
-                  >
-                    {getCellContent(code)}
-                  </div>
-                ))}
+            {/* cells */}
+            {row.map((code, c) => (
+              <div
+                key={`${r}-${c}`}
+                style={cellStyles(code)}
+                onClick={() => {
+                    //it only allows click if this board is live and interactive, and the cell is still unknown meaning code == 0
+                  if (interactive && code === 0) {
+                    onFire(r, c);
+                  }
+                }}
+              >
+                {getCellSymbol(code)}
               </div>
             ))}
-    </div>
-  );
-}
+          </div>
+        ))}
+      </div>
+    );
+  }

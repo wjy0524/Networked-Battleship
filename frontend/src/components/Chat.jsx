@@ -11,125 +11,91 @@ export default function Chat({ log, onSend }) {
   const bottomRef = useRef(null);
 
   // TODO: use a useEffect to auto-scroll to bottomRef whenever log changes
-  // auto-scroll to the newest message whenever log changes
-   useEffect(() => {
-       if (bottomRef.current) {
-           bottomRef.current.scrollIntoView({ behavior: "smooth" });
-      }
-   }, [log]);
+  useEffect(() => {bottomRef.current?.scrollIntoView({ behavior: "smooth" });}, [log]);
 
   const submit = () => {
     // TODO: call onSend with the trimmed input, then clear the input field
     //       do nothing if the trimmed string is empty
-    const trimmed = input.trim();
-
-        // do nothing if the message is empty after trimming
-        if (!trimmed) return;
-
-        // send the message to the parent component
-        onSend(trimmed);
-
-        // clear the input box
-        setInput("");
+    //remove whitespace from both ends of the input
+    const trimmedInput = input.trim();
+    //do nothing if the trimmed string is empty
+    if(trimmedInput.length === 0) return;
+    //call onSend with the trimmed input
+    onSend(trimmedInput);
+    //clear the input field
+    setInput("");
   };
 
   // TODO: render:
   //   - a scrollable list of messages (from, time, text)
   //   - a text input that calls submit() on Enter key
   //   - a Send button that calls submit() on click
+  //this CSS layout boilerplate part was helped with CHATGPT
+  return (
+      <div
+        style={{
+          width: "260px",
+          border: "1px solid #cfd8dc",
+          borderRadius: "6px",
+          display: "flex",
+          flexDirection: "column",
+          height: "400px"
+        }}
+      >
+        <h3 style={{ margin: "8px" }}>💬 Chat</h3>
 
-  //return (
-    //<div>
-      //<h3>💬 Chat</h3>
-      //{/* TODO */}
-      //<p style={{ color: "#546e7a", fontSize: 13 }}>Chat not yet implemented</p>
-    //</div>
-    return (
+        {/* message list */}
         <div
           style={{
-            width: "320px",
-            border: "1px solid #cfd8dc",
-            borderRadius: "8px",
-            padding: "12px",
-            backgroundColor: "#fafafa"
+            flex: 1,
+            overflowY: "auto",
+            padding: "8px",
+            fontSize: "12px"
           }}
         >
-          <h3 style={{ marginTop: 0 }}>💬 Chat</h3>
+          {log.map((msg, idx) => (
+            <div key={idx} style={{ marginBottom: "6px" }}>
+              <div style={{ color: "#546e7a" }}>
+                {msg.from} • {msg.time}
+              </div>
+              <div>{msg.text}</div>
+            </div>
+          ))}
 
-          {/* scrollable chat log */}
-          <div
+          {/* scroll anchor */}
+          <div ref={bottomRef} />
+        </div>
+
+        {/* input + button */}
+        <div style={{ display: "flex", borderTop: "1px solid #cfd8dc" }}>
+          <input
             style={{
-              height: "260px",
-              overflowY: "auto",
-              border: "1px solid #e0e0e0",
-              borderRadius: "6px",
-              padding: "8px",
-              backgroundColor: "white",
-              marginBottom: "10px"
+              flex: 1,
+              border: "none",
+              padding: "6px",
+              outline: "none"
+            }}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") submit();
+            }}
+            placeholder="Type message..."
+          />
+
+          <button
+            onClick={submit}
+            style={{
+              border: "none",
+              background: "#1976d2",
+              color: "white",
+              padding: "6px 10px",
+              cursor: "pointer"
             }}
           >
-            {log && log.length > 0 ? (
-              log.map((msg, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    marginBottom: "10px",
-                    paddingBottom: "6px",
-                    borderBottom: "1px solid #f0f0f0"
-                  }}
-                >
-                  <div style={{ fontSize: "12px", color: "#546e7a", marginBottom: "2px" }}>
-                    <strong>{msg.from}</strong>
-                    {msg.time ? ` • ${msg.time}` : ""}
-                  </div>
-                  <div style={{ fontSize: "14px", color: "#263238" }}>
-                    {msg.text}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p style={{ color: "#546e7a", fontSize: 13 }}>No messages yet.</p>
-            )}
-
-            <div ref={bottomRef} />
-          </div>
-
-          {/* input row */}
-          <div style={{ display: "flex", gap: "8px" }}>
-            <input
-              type="text"
-              value={input}
-              placeholder="Type a message..."
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  submit();
-                }
-              }}
-              style={{
-                flex: 1,
-                padding: "8px",
-                border: "1px solid #b0bec5",
-                borderRadius: "6px",
-                fontSize: "14px"
-              }}
-            />
-
-            <button
-              onClick={submit}
-              style={{
-                padding: "8px 12px",
-                border: "none",
-                borderRadius: "6px",
-                backgroundColor: "#1976d2",
-                color: "white",
-                cursor: "pointer"
-              }}
-            >
-              Send
-            </button>
-          </div>
+            Send
+          </button>
         </div>
-      );
-    }
-
+      </div>
+    );
+  }

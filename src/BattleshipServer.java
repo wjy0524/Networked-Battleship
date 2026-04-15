@@ -20,10 +20,21 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.LinkedBlockingQueue;
 
+/**
+ * Entry point for the Battleship server.
+ * Accepts exactly two client connections, wires up all objects, starts all threads, and waits for the game to finish.
+ */
+
 public class BattleshipServer {
 
     private static final int DEFAULT_PORT = 8080;
 
+    /**
+     * main method for the BattleshipServer.
+     * it mainly starts the server, accepts two client connections, creates the necessary threads and queues, and runs until the game finishes.
+     * @param args port number (optional, defaults to DEFAULT_PORT)
+     * @throws IOException if there is an error creating the ServerSocket or accepting connections
+     */
     public static void main(String[] args) throws IOException {
         // TODO: parse port from args[0] if present, fall back to DEFAULT_PORT
         int port = DEFAULT_PORT;
@@ -35,7 +46,7 @@ public class BattleshipServer {
         // TODO: create a ServerSocket on the chosen port (try-with-resources)
         try (ServerSocket servSocket = new ServerSocket(port)) {
             // TODO: print a startup message
-            System.out.println("BattleshipServer] starting on port " + port + ". Waiting for players to connect...");
+            System.out.println("[BattleshipServer] starting on port " + port + ". Waiting for players to connect...");
 
             // TODO: call serverSocket.accept() to get player 1's Socket
             // TODO: call serverSocket.accept() again to get player 2's Socket
@@ -43,10 +54,13 @@ public class BattleshipServer {
             Socket player2Socket = servSocket.accept();
 
             // TODO: create a LinkedBlockingQueue<String> for each player's outbox
+            //a queue to hold messages to be sent to each player
+            //other threads will enqueue messages to these queues, and the WriterThread will dequeue and send them to the client
             LinkedBlockingQueue<String> player1Outbox = new LinkedBlockingQueue<>();
             LinkedBlockingQueue<String> player2Outbox = new LinkedBlockingQueue<>();
 
             // TODO: create a WriterThread for each player
+            //sends messages from the outbox to the client by converting them to WebSocket frames and writing to the socket's OutputStream
             WriterThread player1Writer = new WriterThread(player1Outbox, player1Socket.getOutputStream(), player1Socket);
             WriterThread player2Writer = new WriterThread(player2Outbox, player2Socket.getOutputStream(), player2Socket);
 
@@ -54,6 +68,8 @@ public class BattleshipServer {
             GameServer gameServer = new GameServer(player1Socket, player2Socket, player1Writer, player2Writer);
 
             // TODO: create a ClientHandler for each player
+            //reads messages from the client by reading WebSocket frames from the socket's InputStream
+            //fowards to the GameServer
             ClientHandler player1Handler = new ClientHandler(player1Socket, 1, gameServer);
             ClientHandler player2Handler = new ClientHandler(player2Socket, 2, gameServer);
 
@@ -65,16 +81,52 @@ public class BattleshipServer {
             player1Handler.start();
             player2Handler.start();
 
+            //if the third person tries to connect, reject the connection and print a message
+            //I need to make a new thread because main thread is blocked on the join() calls
+            //so I can't just do this in the main thread
+            Thread otherThread = new Thread(() -> {
+                //since other than 2 players are not allowed to connect
+                //we will just keep accepting connections using while true and immediately closing them, while printing a message to the console
+                while(true){
+                    try{
+                        //other socket trying to connect
+                        Socket otherSocket = servSocket.accept();
+                        try{
+                            //while player 1 and 2 do handshake in client hanlder, other socket has to handshake here
+                            WebSocketUtil.handshake(otherSocket.getInputStream(), otherSocket.getOutputStream());
+                            //writeFrame to the other socket to tell them that the server is full and they can't connect
+                            WebSocketUtil.writeFrame(otherSocket.getOutputStream(), Message.errorJson("Server is full."));
+                        }catch (Exception e){}
+
+                        try{
+                            //close the other socket after sending the message
+                            otherSocket.close();
+                        }catch (Exception e) {
+                            //do nothing
+                        }
+
+
+                    }catch (IOException e){
+                        //do nothing
+                    }
+
+                }
+            });
+
+            //start the other thread to handle extra connections
+            otherThread.setDaemon(true); // set as daemon so when the main thread exits, this thread will also exit
+            otherThread.start();
+
             // TODO: join both ClientHandler threads so main() waits for the game to end
             player1Handler.join();
             player2Handler.join();
 
             // TODO: print a shutdown message
-            System.out.println("BattleshipServer] game has ended. Shutting down.");
+            System.out.println("[BattleshipServer] game has ended. Shutting down.");
 
-        } catch (InterruptedException e) {
+        }catch (InterruptedException e) {
             // catch InterruptedException from the join() calls
-            //afeter restoring the interrupt flag, exit the main method to allow the server to shut down
+            //after restoring the interrupt flag, exit the main method to allow the server to shut down
             Thread.currentThread().interrupt();
         }
     }

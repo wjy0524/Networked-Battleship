@@ -72,7 +72,7 @@ public class Board {
     public String shipLayoutToJson() {
         // TODO: iterate over hiddenBoard; emit 1 if the cell is SHIP or HIT, else 0
         //       (HIT cells were ships, so they should still count as ship cells here)
-        //basically send theh hidden board but with hits converted to ships and everything else converted to water
+        //basically send the hidden board but with hits converted to ships and everything else converted to water
         //H6.1 — shipLayoutToJson reports the initial layout. A cell is a "ship cell" if it was ever placed as a ship,
         // even after it has been hit. In hiddenBoard, hit cells are stored as GameConfiguration.HIT (not GameConfiguration.SHIP),
         // so your condition should be cell == SHIP || cell == HIT → emit 1.
@@ -94,7 +94,7 @@ public class Board {
                     sb.append("0"); // indicates a water cell
                 }
                 //[1,1,0
-                //i should add , between columns but not after the last column
+                //I should add , between columns but not after the last column
                 if(col < size-1){
                     sb.append(",");
                 }
@@ -136,6 +136,7 @@ public class Board {
         // If playerView is WATER, then it's either 0 or 1 depending on hiddenBoard.
         // If playerView is HIT, then it's 2.
         // If playerView is MISS, then it's 3.
+        // same start with string builder [
         StringBuilder sb = new StringBuilder("[");
 
         for(int row =0; row<size; row++) {
@@ -143,7 +144,7 @@ public class Board {
             sb.append("[");
             //iterate through the columns
             for (int col = 0; col < size; col++) {
-                //encoded num for the cell, 0 or 1 - depends on whether it's a ship cell or water, 2 if it's a hit, 3 if it's a miss
+                //encoded num for the cell: 0 or 1 depends on whether it's a ship cell or water, 2 if it's a hit, 3 if it's a miss
                 int encodedNum;
                 if(playerView[row][col] == GameConfiguration.WATER){
                     //if it's water, it could be 0 or 1 depending on whether it's a ship cell or not
@@ -159,10 +160,10 @@ public class Board {
                     //if the player view is miss
                     encodedNum = 3;
                 }
-                //appned the encoded num to the string builder
+                //append the encoded num to the string builder
                 sb.append(encodedNum);
 
-                // add comma between columns but no after the las one
+                // add comma between columns but no after the last one
                 if (col < size - 1) {
                     sb.append(",");
                 }

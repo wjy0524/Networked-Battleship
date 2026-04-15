@@ -10,6 +10,11 @@
  *
  * No external JSON library is permitted.  Use String methods only.
  */
+
+/**
+ * Represents a single protocol message between the server and client.  All messages share a "type" field;
+ * additional fields are present or absent depending on the type.
+ */
 public class Message {
 
     // -----------------------------------------------------------------------
@@ -70,12 +75,14 @@ public class Message {
                 String row = extractValue(json, "row");
                 String col = extractValue(json, "col");
                 if(row != null){
+                    // if the row is not null, parse it as an integer
                     mes.row = Integer.parseInt(row);
                 }
                 if(col != null){
+                    //if col is not null, parse it as an integer
                     mes.col = Integer.parseInt(col);
                 }
-            //if type  is CHAT
+            //if type is CHAT
             }else if(type.equals("CHAT")){
                 //extract the text field
                 mes.text = extractValue(json, "text");
@@ -103,7 +110,9 @@ public class Message {
             return null;
         }
         //find the index of the colon // "type":"FIRE"
+        //indexOf("a", b) meaning find the index of "a" starting from index b
         int idxOfColon = json.indexOf(":", idxOfKey);
+
         //if there's no colon, return null
         if(idxOfColon == -1){
             return null;
@@ -113,7 +122,8 @@ public class Message {
         int idxOfValue = idxOfColon + 1;
 
         //since there could be spaces between the colon and the value, we need to skip them
-        //I learned the method Character.isWhitespace() to check if a char is a whitespace character from CHATGPT help
+        //I learned the method Character.isWhitespace() to check if a char is a whitespace character from Google Search
+        //so until it reaches the first non whitespace char, keep incrementing the index
         while(idxOfValue<json.length() && Character.isWhitespace(json.charAt(idxOfValue))){
             //increments the index until it reaches the first non whitespace char
             idxOfValue++;
@@ -150,8 +160,9 @@ public class Message {
             //it there is no closing quote, then return null
             return null;
         }
-        //now for unquoted val, we shhould find the end of the value, which is either a comma or a closing brace. Then since we know the start and end index of the value
-        //we can extract teh value using substring
+        //now for unquoted val, we should find the end of the value, which is either a comma or a closing brace.
+        //Then since we know the start and end index of the value
+        //we can extract the value using substring
         int idxOfEnd = idxOfValue;
         while(idxOfEnd<json.length() && json.charAt(idxOfEnd) != ',' && json.charAt(idxOfEnd) != '}' && !Character.isWhitespace(json.charAt(idxOfEnd))){
             //increments the index until it reaches the end of the value
@@ -176,7 +187,7 @@ public class Message {
     // Field names must exactly match the protocol table in the README.
     // -----------------------------------------------------------------------
 
-    /** {"type":"ASSIGN","playerNumber":<n>} */
+    /** {"type":"ASSIGN","playerNumber": [n]} */
     public static String assignJson(int playerNumber) {
         return "{\"type\":\"ASSIGN\",\"playerNumber\":" + playerNumber + "}";
     }
@@ -187,7 +198,7 @@ public class Message {
     }
 
     /**
-     * {"type":"GAME_START","myBoard":<2d array>,"turn":<n>}
+     * {"type":"GAME_START","myBoard":[2d array],"turn":[n]}
      *
      * @param myBoardJson the JSON array string returned by Board.shipLayoutToJson()
      * @param turn        1 or 2 — which player moves first
@@ -197,14 +208,14 @@ public class Message {
     }
 
     /**
-     * {"type":"SHOT_RESULT","shooter":<n>,"row":<r>,"col":<c>,
-     *  "hit":<bool>,"sunkShip":<name or null>}
+     * {"type":"SHOT_RESULT","shooter":[n],"row":[r],"col":[c],
+     *  "hit":[bool],"sunkShip":[name or null]}
      */
     public static String shotResultJson(int shooter, int row, int col,  boolean hit, String sunkShip) {
         String sunkShipJson;
 
         if(sunkShip == null){
-            //if the sunkship is null, then the sunkShipJson should be null
+            //if the sunk Ship is null, then the sunkShipJson should be null
             sunkShipJson = "null";
         }else{
             sunkShipJson = "\"" + escapeJson(sunkShip) + "\"";
@@ -213,18 +224,18 @@ public class Message {
 
     }
 
-    /** {"type":"TURN_CHANGE","turn":<n>} */
+    /** {"type":"TURN_CHANGE","turn":[n]} */
     public static String turnChangeJson(int turn) {
         return "{\"type\":\"TURN_CHANGE\",\"turn\":" + turn + "}";
     }
 
-    /** {"type":"CHAT","from":"<from>","text":"<text>"} */
+    /** {"type":"CHAT","from":"[from]","text":"[text]"} */
     public static String chatJson(String from, String text) {
         return "{\"type\":\"CHAT\",\"from\":\"" + escapeJson(from) + "\",\"text\":\"" + escapeJson(text) + "\"}";
     }
 
     /**
-     * {"type":"GAME_OVER","winner":<n>,"finalBoard":<2d array>}
+     * {"type":"GAME_OVER","winner":[n],"finalBoard":[2d array]}
      *
      * @param finalBoardJson the JSON array string returned by Board.fullStateToJson()
      */
@@ -237,7 +248,7 @@ public class Message {
         return "{\"type\":\"OPPONENT_DISCONNECTED\"}";
     }
 
-    /** {"type":"ERROR","message":"<msg>"} */
+    /** {"type":"ERROR","message":"[msg]"} */
     public static String errorJson(String msg) {
         return "{\"type\":\"ERROR\",\"message\":\"" + escapeJson(msg) + "\"}";
     }
